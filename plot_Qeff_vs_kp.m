@@ -15,22 +15,37 @@ function plot_Qeff_vs_kp(res_kp)
     kp_vals = arrayfun(@(r) r.value, res_kp.runs);
     Q_vals  = arrayfun(@(r) r.Q_eff, res_kp.runs);
 
-    figure('Name', 'Q_eff vs k_p', 'Color', 'w', 'Position', [200 200 700 450]);
-    semilogx(kp_vals, Q_vals, 'b-o', 'LineWidth', 1.5, 'MarkerSize', 8, ...
-             'MarkerFaceColor', [0.2 0.4 0.8]);
-    hold on; grid on; box on;
-
-    % Logaritminė aproksimacija Q_eff(log10(k_p))
+    % --- Logaritminė aproksimacija Q_eff(log10(k_p)) ---
     log_kp = log10(kp_vals);
     coeffs = polyfit(log_kp, Q_vals, 1);
-    kp_fit = logspace(log10(min(kp_vals)), log10(max(kp_vals)), 100);
-    Q_fit  = polyval(coeffs, log10(kp_fit));
-    semilogx(kp_fit, Q_fit, 'r--', 'LineWidth', 1.2);
+    Q_pred = polyval(coeffs, log_kp);
+    R2     = 1 - sum((Q_vals - Q_pred).^2) / sum((Q_vals - mean(Q_vals)).^2);
 
-    % Aproksimacijos formulė ant grafiko
+    fprintf('--- Q_eff vs k_p aproksimacija ---\n');
+    fprintf('Q = %.4f*log10(k_p) + %.4f,  R^2 = %.4f\n', ...
+            coeffs(1), coeffs(2), R2);
+
+    kp_fit = logspace(log10(min(kp_vals)), log10(max(kp_vals)), 200);
+    Q_fit  = polyval(coeffs, log10(kp_fit));
+
+    % --- Grafikas ---
+    figure('Name', 'Q_eff vs k_p', 'Color', 'w', 'Position', [200 200 700 450]);
+
+    % Aproksimacijos kreivė
+    h_fit = semilogx(kp_fit, Q_fit, 'r--', 'LineWidth', 1.4); hold on;
+
+    % Tik markeriai, be jungiamosios linijos
+    h_pts = semilogx(kp_vals, Q_vals, 'o', 'MarkerSize', 8, ...
+                     'MarkerEdgeColor', [0.1 0.2 0.5], ...
+                     'MarkerFaceColor', [0.2 0.4 0.8], ...
+                     'LineStyle', 'none');
+    grid on; box on;
+
     formula = sprintf('Q_{eff} = %.4f \\cdot log_{10}(k_p) + %.3f', ...
                       coeffs(1), coeffs(2));
-    text(1e-13, 1.842, formula, 'FontSize', 10, 'Color', 'r');
+    text(0.04, 0.95, {formula; sprintf('R^2 = %.4f', R2)}, ...
+         'Units', 'normalized', 'FontSize', 10, 'Color', 'r', ...
+         'VerticalAlignment', 'top');
 
     % Skaitinės reikšmės prie taškų
     for k = 1:numel(kp_vals)
@@ -42,7 +57,8 @@ function plot_Qeff_vs_kp(res_kp)
     ylabel('Q_{eff} (Ah)', 'FontSize', 11);
     title('Efektyvios talpos priklausomybė nuo reakcijos konstantos k_p', ...
           'FontSize', 11);
-    legend('Simuliacijos taškai', 'Logaritminė aproksimacija', 'Location', 'southeast');
+    legend([h_pts, h_fit], {'Simuliacijos taškai', 'Logaritminė aproksimacija'}, ...
+           'Location', 'southeast');
     set(gca, 'FontSize', 10);
     ylim([1.835, 1.855]);
 end
